@@ -44,7 +44,7 @@ jobs:
             rm -rf excel-app
             
             # Clone the repository
-            git clone https://github.com/${{ env.GITHUB_REPO }}.git excel-app
+            git clone https://github.com/${{ env.GITHUB_REPO }}.git
             
             # Navigate to project
             cd ~/excel-app-test
