@@ -53,8 +53,8 @@ jobs:
             docker-compose down 2>/dev/null || true
             
             # Build and start new containers with increased timeout
-            docker-compose up -d --build
-            
+            docker-compose up -d --buildname: Deploy to EC2 without Docker Hub
+
             # Wait for containers to be healthy
             sleep 10
             
@@ -68,6 +68,5 @@ jobs:
             echo ""
             echo "Frontend logs:"
             docker logs excel-frontend | tail -20
-            
             echo "✅ Deployment completed successfully!"
           ENDSSH
