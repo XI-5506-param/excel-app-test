@@ -1,6 +1,21 @@
 version: '3.8'
 services:
-  backend:
+  
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: excel-frontend
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+    networks:
+      - excel-network
+    # environment:
+    #   - REACT_APP_API_URL=http://localhost:8000
+
+    backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -9,6 +24,8 @@ services:
       - "8000:8000"
     volumes:
       - backend-data:/app/data
+    depends_on:
+      - frontend
     restart: unless-stopped
     networks:
       - excel-network
@@ -18,21 +35,6 @@ services:
     #   timeout: 10s
     #   retries: 3
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: excel-frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - excel-network
-    # environment:
-    #   - REACT_APP_API_URL=http://localhost:8000
-
 volumes:
   backend-data:
 
@@ -40,3 +42,4 @@ networks:
   excel-network:
 
     driver: bridge
+
