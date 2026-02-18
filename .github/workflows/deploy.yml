@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy to EC2 without Docker Hub
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'Cloud/excel-app-test/**'
-      - '.github/workflows/deploy.yml'
+      - '.github/workflows/deploy-no-hub.yml'
 
 jobs:
   deploy:
@@ -30,12 +30,12 @@ jobs:
           # Create app directory on EC2
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST 'mkdir -p ~/excel-app'
           
-          # Copy project files to EC2
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r Cloud/excel-app-test/* $EC2_USER@$EC2_HOST:~/excel-app/
+          # Copy entire project directory to EC2 (use -r without wildcard)
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r ./Cloud/excel-app-test/ $EC2_USER@$EC2_HOST:~/excel-app/
           
           # Build and run on EC2
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'ENDSSH'
-            cd ~/excel-app
+            cd ~/excel-app/excel-app-test
             
             # Stop old containers
             docker-compose down 2>/dev/null || true
@@ -49,5 +49,5 @@ jobs:
             # Show running containers
             docker ps
             
-            echo "Deployment completed"
+            echo "✅ Deployment completed successfully!"
           ENDSSH
