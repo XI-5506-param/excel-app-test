@@ -37,7 +37,7 @@ jobs:
             git clone https://github.com/${{ env.GITHUB_REPO }}.git
             
             # Navigate to project
-            cd ~/excel-app-test
+            cd excel-app-test
             
             # Stop old containers
             docker-compose down 2>/dev/null || true
