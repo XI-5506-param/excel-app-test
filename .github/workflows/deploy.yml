@@ -1,0 +1,53 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Cloud/excel-app-test/**'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+          
+          # Create app directory on EC2
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST 'mkdir -p ~/excel-app'
+          
+          # Copy project files to EC2
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r Cloud/excel-app-test/* $EC2_USER@$EC2_HOST:~/excel-app/
+          
+          # Build and run on EC2
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'ENDSSH'
+            cd ~/excel-app
+            
+            # Stop old containers
+            docker-compose down 2>/dev/null || true
+            
+            # Build and start new containers
+            docker-compose up -d --build
+            
+            # Clean up old images
+            docker image prune -af
+            
+            # Show running containers
+            docker ps
+            
+            echo "Deployment completed"
+          ENDSSH
