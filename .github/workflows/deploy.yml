@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'Cloud/excel-app-test/**'
-      - '.github/workflows/deploy-no-hub.yml'
+      - 'excel-app-test/**'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
@@ -21,21 +21,23 @@ jobs:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          GITHUB_REPO: ${{ github.repository }}
         run: |
           mkdir -p ~/.ssh
           echo "$EC2_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
           
-          # Create app directory on EC2
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST 'mkdir -p ~/excel-app'
-          
-          # Copy entire project directory to EC2 (use -r without wildcard)
-          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -r ./Cloud/excel-app-test/ $EC2_USER@$EC2_HOST:~/excel-app/
-          
-          # Build and run on EC2
+          # SSH into EC2 and deploy
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'ENDSSH'
-            cd ~/excel-app/excel-app-test
+            # Go to home directory
+            cd ~
+            
+            # Clone the repository
+            git clone https://github.com/${{ env.GITHUB_REPO }}.git
+            
+            # Navigate to project
+            cd ~/excel-app-test
             
             # Stop old containers
             docker-compose down 2>/dev/null || true
@@ -47,6 +49,7 @@ jobs:
             docker image prune -af
             
             # Show running containers
+            echo "Running containers:"
             docker ps
             
             echo "✅ Deployment completed successfully!"
