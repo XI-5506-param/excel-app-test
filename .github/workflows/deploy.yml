@@ -43,14 +43,11 @@ jobs:
             docker-compose down 2>/dev/null || true
             
             # Build and start new containers
-            docker-compose up -d --build
-            
-            # Clean up old images
-            docker image prune -af
+            docker compose up -d --build
             
             # Show running containers
             echo "Running containers:"
             docker ps
             
-            echo "✅ Deployment completed successfully!"
+            echo "Deployment completed successfully!"
           ENDSSH
