@@ -1,50 +1,73 @@
-# ...existing code...
 name: Deploy to EC2
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-# ...existing code...
-      - name: Ensure Docker, update repo and deploy with docker compose
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_PRIVATE_KEY }}
-          port: ${{ secrets.REMOTE_PORT }}
-          script: |
-            set -e
-            sudo apt-get update || true
-            sudo apt-get install -y git docker.io docker-compose-plugin || true
-            sudo systemctl enable --now docker || true
-            mkdir -p "${{ secrets.TARGET_DIR }}"
-            cd "${{ secrets.TARGET_DIR }}"
-            if [ -d .git ]; then
-              git fetch --all --prune
-              git reset --hard origin/main
-            else
-              echo "No git repo found in ${TARGET_DIR}. Please git clone the repo into ${TARGET_DIR} on the server." >&2
-              exit 1
-            fi
-            sudo docker compose down || true
-            sudo docker compose up -d --build
-
-# ...existing code...
-      - name: Print EC2 public IP
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_PRIVATE_KEY }}
-          port: ${{ secrets.REMOTE_PORT }}
-          script: |
-            curl -s http://169.254.169.254/latest/meta-data/public-ipv4 || echo "${{ secrets.EC2_HOST }}"
-# ...existing code...
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$EC2_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+          
+          # Create SSH config to prevent timeout
+          cat > ~/.ssh/config << EOF
+          Host $EC2_HOST
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+            ServerAliveInterval 60
+            ServerAliveCountMax 10
+          EOF
+          
+          # SSH into EC2 and deploy
+          ssh -i ~/.ssh/deploy_key -o ConnectTimeout=10 -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'ENDSSH'
+            # Go to home directory
+            cd ~
+            
+            # Remove old repo if exists
+            rm -rf excel-app
+            
+            # Clone the repository
+            git clone https://github.com/${{ env.GITHUB_REPO }}.git excel-app
+            
+            # Navigate to project
+            cd ~/excel-app/Cloud/excel-app-test
+            
+            # Stop old containers
+            docker-compose down 2>/dev/null || true
+            
+            # Build and start new containers with increased timeout
+            docker-compose up -d --build
+            
+            # Wait for containers to be healthy
+            sleep 10
+            
+            # Check status
+            docker ps
+            
+            # Show logs
+            echo "Backend logs:"
+            docker logs excel-backend | tail -20
+            
+            echo ""
+            echo "Frontend logs:"
+            docker logs excel-frontend | tail -20
+            
+            echo "✅ Deployment completed successfully!"
+          ENDSSH
