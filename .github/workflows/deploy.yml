@@ -53,7 +53,7 @@ jobs:
             docker compose down 2>/dev/null || true
             
             # Build and start new containers with increased timeout
-            docker compose up -d --buildname: Deploy to EC2 without Docker Hub
+            docker compose up -d
 
             # Wait for containers to be healthy
             sleep 10
